@@ -55,7 +55,10 @@ input,select{font-family:inherit;font-size:13px;}
 
 /* 日历 */
 .cal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;gap:8px;flex-wrap:wrap;}
+.cal-head-left{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
 .cal-month{font-size:17px;font-weight:600;letter-spacing:-0.01em;}
+.lunar-toggle{font-size:11px;color:var(--tx3);padding:3px 8px;border:1px solid var(--line2);border-radius:8px;background:var(--soft);}
+.lunar-toggle:hover{color:var(--accent);border-color:var(--accent);}
 .cal-head-right{display:flex;gap:8px;align-items:center;}
 .cal-nav{display:flex;gap:6px;}
 .cal-nav button{width:30px;height:30px;border:1px solid var(--line);border-radius:8px;color:var(--tx2);font-size:16px;display:flex;align-items:center;justify-content:center;line-height:1;}
