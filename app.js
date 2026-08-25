@@ -62,6 +62,7 @@ let scaleOpenModuleId = null;
 let chartPrefs = {};
 try { chartPrefs = JSON.parse(localStorage.getItem('teamhub_chart_prefs') || '{}'); } catch (e) {}
 let tablePage = {};
+let showLunar = false;
 
 /* ---------- 基础工具 ---------- */
 function pad(n) { return String(n).padStart(2, '0'); }
@@ -70,10 +71,11 @@ function parseISO(s) { const [y, m, d] = s.split('-').map(Number); return new Da
 function todayISO() { const d = new Date(); return toISO(d.getFullYear(), d.getMonth(), d.getDate()); }
 function weekday(iso) { return ['周日', '周一', '周二', '周三', '周四', '周五', '周六'][parseISO(iso).getDay()]; }
 function todayCN() { const d = new Date(); return `${d.getFullYear()} 年 ${d.getMonth() + 1} 月 ${d.getDate()} 日`; }
-function lunarDayText(iso) {
+function lunarText(iso) {
   try {
     const d = parseISO(iso);
-    return window.Solar.fromYmd(d.getFullYear(), d.getMonth() + 1, d.getDate()).getLunar().getDayInChinese();
+    const lunar = window.Solar.fromYmd(d.getFullYear(), d.getMonth() + 1, d.getDate()).getLunar();
+    return `${lunar.getMonthInChinese()}月${lunar.getDayInChinese()}`;
   } catch (e) {
     return '';
   }
@@ -498,7 +500,7 @@ function renderCalendar() {
     const restHtml = restDays.has(iso) ? '<span class="cal-rest">休</span>' : '';
     const doneHtml = done ? `<span class="cal-done">${done}项</span>` : '';
     const dotsHtml = uids.length ? `<div class="cal-dots">${uids.map(u => `<span class="cal-dot" style="background:${memberColor(u)}"></span>`).join('')}</div>` : '';
-    const lunar = lunarDayText(iso);
+    const lunar = showLunar ? lunarText(iso) : '';
     const lunarHtml = lunar ? `<span class="cal-lunar">${lunar}</span>` : '';
     html += `<div class="${cls.join(' ')}" data-day="${iso}"><div class="cal-d">${d}</div>${lunarHtml}${restHtml}${dotsHtml}${doneHtml}</div>`;
   }
@@ -536,6 +538,11 @@ async function changeMonth(delta) {
 }
 document.getElementById('cal-prev').onclick = () => changeMonth(-1);
 document.getElementById('cal-next').onclick = () => changeMonth(1);
+document.getElementById('lunar-toggle').onclick = () => {
+  showLunar = !showLunar;
+  document.getElementById('lunar-toggle').textContent = showLunar ? '隐藏农历' : '显示农历';
+  renderCalendar();
+};
 document.getElementById('cal-admin').onclick = async () => {
   if (!selISO) return;
   if (restDays.has(selISO)) {
