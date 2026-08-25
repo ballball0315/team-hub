@@ -27,6 +27,9 @@ const LINES = [
   { id: 'robamMini', name: '老板电器小程序', subs: [] }
 ];
 const LINK_PALETTE = ['#0071e3', '#af52de', '#34a853', '#e75480', '#f97316', '#0ea5e9', '#8e44ad', '#16a085', '#d35400', '#e67e22'];
+const BIRTHDAYS = [
+  { name: '楠楠', lunarMonth: 7, lunarDay: 25 }
+];
 
 let currentAccount = null;
 let membersById = {};
@@ -79,6 +82,22 @@ function lunarText(iso) {
   } catch (e) {
     return '';
   }
+}
+function lunarMd(iso) {
+  try {
+    const d = parseISO(iso);
+    const lunar = window.Solar.fromYmd(d.getFullYear(), d.getMonth() + 1, d.getDate()).getLunar();
+    return { month: lunar.getMonth(), day: lunar.getDay() };
+  } catch (e) {
+    return null;
+  }
+}
+function birthdayText(iso) {
+  const md = lunarMd(iso);
+  if (!md) return '';
+  return BIRTHDAYS.filter(b => b.lunarMonth === md.month && b.lunarDay === md.day)
+    .map(b => b.name)
+    .join('、');
 }
 function shortDate(iso) { if (!iso) return ''; const d = parseISO(iso.slice(0, 10)); return `${d.getMonth() + 1}/${d.getDate()}`; }
 function fmtTime(iso) { const d = new Date(iso); return `${pad(d.getHours())}:${pad(d.getMinutes())}`; }
@@ -502,7 +521,9 @@ function renderCalendar() {
     const dotsHtml = uids.length ? `<div class="cal-dots">${uids.map(u => `<span class="cal-dot" style="background:${memberColor(u)}"></span>`).join('')}</div>` : '';
     const lunar = showLunar ? lunarText(iso) : '';
     const lunarHtml = lunar ? `<span class="cal-lunar">${lunar}</span>` : '';
-    html += `<div class="${cls.join(' ')}" data-day="${iso}"><div class="cal-d">${d}</div>${lunarHtml}${restHtml}${dotsHtml}${doneHtml}</div>`;
+    const birthday = birthdayText(iso);
+    const birthdayHtml = birthday ? `<span class="cal-birthday" title="生日">${birthday}</span>` : '';
+    html += `<div class="${cls.join(' ')}" data-day="${iso}"><div class="cal-d">${d}</div>${lunarHtml}${birthdayHtml}${restHtml}${dotsHtml}${doneHtml}</div>`;
   }
   const tail = (7 - ((offset + daysInMonth) % 7)) % 7;
   for (let i = 0; i < tail; i++) html += '<div class="cal-cell dim"></div>';
