@@ -27,9 +27,6 @@ const LINES = [
   { id: 'robamMini', name: '老板电器小程序', subs: [] }
 ];
 const LINK_PALETTE = ['#0071e3', '#af52de', '#34a853', '#e75480', '#f97316', '#0ea5e9', '#8e44ad', '#16a085', '#d35400', '#e67e22'];
-const BIRTHDAYS = [
-  { name: '楠楠', lunarMonth: 7, lunarDay: 25 }
-];
 
 let currentAccount = null;
 let membersById = {};
@@ -94,10 +91,17 @@ function lunarMd(iso) {
 }
 function birthdayText(iso) {
   const md = lunarMd(iso);
-  if (!md) return '';
-  return BIRTHDAYS.filter(b => b.lunarMonth === md.month && b.lunarDay === md.day)
-    .map(b => b.name)
-    .join('、');
+  const d = parseISO(iso);
+  const matches = [];
+  for (const member of Object.values(membersById)) {
+    if (!member.birthday_type) continue;
+    if (member.birthday_type === 'lunar') {
+      if (md && member.birthday_month === md.month && member.birthday_day === md.day) matches.push(member.name);
+    } else if (member.birthday_month === d.getMonth() + 1 && member.birthday_day === d.getDate()) {
+      matches.push(member.name);
+    }
+  }
+  return matches.join('、');
 }
 function shortDate(iso) { if (!iso) return ''; const d = parseISO(iso.slice(0, 10)); return `${d.getMonth() + 1}/${d.getDate()}`; }
 function fmtTime(iso) { const d = new Date(iso); return `${pad(d.getHours())}:${pad(d.getMinutes())}`; }
@@ -281,12 +285,25 @@ function renderAccountList(list) {
         <button data-reset="${a.id}">重置密码</button>
         <button class="del" data-del="${a.id}" ${self ? 'disabled style="opacity:.4;cursor:default;"' : ''}>删除</button>
       </div>
+      <div class="acct-birthday">
+        <span class="blabel">生日</span>
+        <select data-btype="${a.id}">
+          <option value="" ${!a.birthday_type ? 'selected' : ''}>未设置</option>
+          <option value="lunar" ${a.birthday_type === 'lunar' ? 'selected' : ''}>农历</option>
+          <option value="solar" ${a.birthday_type === 'solar' ? 'selected' : ''}>阳历</option>
+        </select>
+        <input type="number" data-bmonth="${a.id}" placeholder="月" min="1" max="12" value="${a.birthday_month ?? ''}">
+        <input type="number" data-bday="${a.id}" placeholder="日" min="1" max="31" value="${a.birthday_day ?? ''}">
+      </div>
     </div>`;
   }).join('');
   box.querySelectorAll('[data-toggle]').forEach(b => b.onclick = () => toggleAdmin(Number(b.dataset.toggle), b.dataset.now === 'true'));
   box.querySelectorAll('[data-reset]').forEach(b => b.onclick = () => resetPassword(Number(b.dataset.reset)));
   box.querySelectorAll('[data-del]').forEach(b => b.onclick = () => deleteAccount(Number(b.dataset.del)));
   box.querySelectorAll('[data-color]').forEach(input => input.onchange = () => setAccountColor(Number(input.dataset.color), input.value));
+  box.querySelectorAll('[data-btype]').forEach(sel => sel.onchange = () => saveBirthday(Number(sel.dataset.btype)));
+  box.querySelectorAll('[data-bmonth]').forEach(inp => inp.onchange = () => saveBirthday(Number(inp.dataset.bmonth)));
+  box.querySelectorAll('[data-bday]').forEach(inp => inp.onchange = () => saveBirthday(Number(inp.dataset.bday)));
 }
 async function addAccount() {
   const name = document.getElementById('acct-name').value.trim();
@@ -340,6 +357,29 @@ async function setAccountColor(id, color) {
   setAcctMsg('颜色已更新', 'ok');
   await loadAccounts();
   await loadMembers();
+}
+async function saveBirthday(id) {
+  const account = accountList.find(a => a.id === id);
+  if (!account) return;
+  const row = document.querySelector(`.acct-row[data-id="${id}"]`);
+  if (!row) return;
+  const type = row.querySelector('[data-btype]').value;
+  const monthRaw = row.querySelector('[data-bmonth]').value.trim();
+  const dayRaw = row.querySelector('[data-bday]').value.trim();
+  const month = monthRaw === '' ? null : Number(monthRaw);
+  const day = dayRaw === '' ? null : Number(dayRaw);
+  if (!type && (month != null || day != null)) { setAcctMsg('请先选择农历或阳历', 'err'); return; }
+  if (month != null && (month < 1 || month > 12)) { setAcctMsg('月份需在 1-12 之间', 'err'); return; }
+  if (day != null && (day < 1 || day > 31)) { setAcctMsg('日期需在 1-31 之间', 'err'); return; }
+  const { data, error } = await supabase.rpc('update_account', {
+    p_token: sessionToken, p_id: id, p_username: account.username, p_name: account.name,
+    p_is_admin: account.is_admin, p_password: null, p_color: account.color,
+    p_birthday_type: type || null, p_birthday_month: month, p_birthday_day: day
+  });
+  if (error) { setAcctMsg(friendlyText(error), 'err'); return; }
+  if (data && data.error) { setAcctMsg(data.error, 'err'); return; }
+  setAcctMsg('生日已更新', 'ok');
+  await loadAccounts();
 }
 async function resetPassword(id) {
   const pwd = prompt('输入新密码（至少 6 位）');
