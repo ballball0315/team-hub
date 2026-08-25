@@ -562,7 +562,7 @@ function renderCalendar() {
     const lunar = showLunar ? lunarText(iso) : '';
     const lunarHtml = lunar ? `<span class="cal-lunar">${lunar}</span>` : '';
     const birthday = birthdayText(iso);
-    const birthdayHtml = birthday ? `<span class="cal-birthday" title="生日">${birthday}</span>` : '';
+    const birthdayHtml = birthday ? `<span class="cal-birthday" title="生日">🎂 ${birthday}</span>` : '';
     html += `<div class="${cls.join(' ')}" data-day="${iso}"><div class="cal-d">${d}</div>${lunarHtml}${birthdayHtml}${restHtml}${dotsHtml}${doneHtml}</div>`;
   }
   const tail = (7 - ((offset + daysInMonth) % 7)) % 7;
@@ -604,6 +604,17 @@ document.getElementById('lunar-toggle').onclick = () => {
   document.getElementById('lunar-toggle').textContent = showLunar ? '隐藏农历' : '显示农历';
   renderCalendar();
 };
+document.getElementById('cal-today').onclick = async () => {
+  const now = new Date();
+  viewYear = now.getFullYear();
+  viewMonth = now.getMonth();
+  selISO = todayISO();
+  await loadCalendarData();
+  renderCalendar();
+  renderDayPanel();
+  renderMessages();
+  renderAdminBtn();
+};
 document.getElementById('cal-admin').onclick = async () => {
   if (!selISO) return;
   if (restDays.has(selISO)) {
@@ -630,7 +641,11 @@ function renderDayPanel() {
   const done = list.filter(t => t.done).length;
   const rest = restDays.has(selISO);
   const title = selISO === todayISO() ? '今日待办' : `${viewMonth + 1}月${parseISO(selISO).getDate()}日 待办`;
+  const birthday = birthdayText(selISO);
   let html = `<div class="stitle"><span>${title}</span><span class="stitle-right"><span class="cnt">完成 ${done} 项${rest ? ' · <span style="color:var(--green)">休</span>' : ''}</span><button class="flow-btn" id="flow-btn">未完成转入长期待办</button></span></div>`;
+  if (birthday) {
+    html += `<div class="day-birthday"><span class="bicon">🎂</span><span class="btext">${escapeHtml(birthday)} 的生日</span><button class="bwish" data-bwish="${escapeHtml(birthday)}">祝福</button></div>`;
+  }
   html += `<div class="side-scroll">`;
   html += `<div class="todo-input"><input id="today-text" placeholder="添加该日待办，回车"><button id="today-add">+</button></div>`;
   html += `<div id="today-list"></div>`;
@@ -661,6 +676,25 @@ function renderDayPanel() {
   document.getElementById('today-add').onclick = addToday;
   document.getElementById('today-list').onclick = todayListClick;
   document.getElementById('flow-btn').onclick = flowToLong;
+  const bw = document.querySelector('.bwish');
+  if (bw) bw.onclick = () => wishBirthday(bw.dataset.bwish, selISO);
+}
+async function wishBirthday(names, day) {
+  const text = `已祝${names}生日快乐`;
+  const tempId = Date.now();
+  monthDailyTodos.push({ id: tempId, user_id: currentAccount.id, kind: 'daily', day, text, done: true, position: 0, created_at: new Date().toISOString() });
+  renderCalendar();
+  renderDayPanel();
+  const { data, error } = await supabase.from('todos').insert({ user_id: currentAccount.id, kind: 'daily', day, text, done: true, position: 0 }).select().single();
+  if (error) {
+    monthDailyTodos = monthDailyTodos.filter(t => t.id !== tempId);
+    toastError(error);
+  } else if (data) {
+    const idx = monthDailyTodos.findIndex(t => t.id === tempId);
+    if (idx >= 0) monthDailyTodos[idx] = data;
+  }
+  renderCalendar();
+  renderDayPanel();
 }
 function renderTodayList(list) {
   const box = document.getElementById('today-list');
