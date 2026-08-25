@@ -350,6 +350,11 @@ input,select{font-family:inherit;font-size:13px;}
 .acct-row .acts button{font-size:11px;color:var(--tx2);padding:4px 8px;border:1px solid var(--line);border-radius:7px;white-space:nowrap;}
 .acct-row .acts button:hover{color:var(--accent);border-color:var(--accent);}
 .acct-row .acts button.del:hover{color:var(--red);border-color:var(--red);}
+.acct-birthday{flex-basis:100%;display:flex;align-items:center;gap:6px;padding-left:40px;font-size:12px;color:var(--tx2);}
+.acct-birthday .blabel{color:var(--tx3);}
+.acct-birthday select,.acct-birthday input{padding:5px 8px;border:1px solid var(--line2);border-radius:7px;outline:none;background:var(--card);font-size:12px;color:var(--tx);}
+.acct-birthday select:focus,.acct-birthday input:focus{border-color:var(--accent);}
+.acct-birthday input[type=number]{width:56px;}
 
 @media (max-width:760px){
   .account-add input{flex-basis:45%;}
