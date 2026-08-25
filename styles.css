@@ -59,6 +59,8 @@ input,select{font-family:inherit;font-size:13px;}
 .cal-month{font-size:17px;font-weight:600;letter-spacing:-0.01em;}
 .lunar-toggle{font-size:11px;color:var(--tx3);padding:3px 8px;border:1px solid var(--line2);border-radius:8px;background:var(--soft);}
 .lunar-toggle:hover{color:var(--accent);border-color:var(--accent);}
+.today-btn{font-size:11px;color:var(--accent);padding:3px 8px;border:1px solid var(--accent);border-radius:8px;background:transparent;}
+.today-btn:hover{background:var(--accent-bg);}
 .cal-head-right{display:flex;gap:8px;align-items:center;}
 .cal-nav{display:flex;gap:6px;}
 .cal-nav button{width:30px;height:30px;border:1px solid var(--line);border-radius:8px;color:var(--tx2);font-size:16px;display:flex;align-items:center;justify-content:center;line-height:1;}
@@ -114,6 +116,11 @@ input,select{font-family:inherit;font-size:13px;}
 .todo-item .mx.del:hover{color:var(--red);}
 .flow-btn{margin-left:auto;font-size:11px;color:var(--accent);padding:2px 6px;border:1px solid var(--line2);border-radius:6px;background:transparent;flex-shrink:0;white-space:nowrap;}
 .flow-btn:hover{background:var(--accent-bg);border-color:var(--accent);}
+.day-birthday{display:flex;align-items:center;gap:8px;margin:0 0 10px;padding:8px 10px;background:#fdeef4;border-radius:10px;font-size:12px;color:var(--pink);flex-shrink:0;}
+.day-birthday .bicon{font-size:16px;}
+.day-birthday .btext{flex:1;}
+.day-birthday .bwish{padding:4px 12px;border:none;border-radius:8px;background:var(--pink);color:#fff;font-size:12px;}
+.day-birthday .bwish:hover{opacity:.9;}
 
 /* 贺电 */
 .msg-area{padding-top:16px;border-top:1px solid var(--line);display:flex;flex-direction:column;flex-shrink:0;}
