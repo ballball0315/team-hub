@@ -70,6 +70,14 @@ function parseISO(s) { const [y, m, d] = s.split('-').map(Number); return new Da
 function todayISO() { const d = new Date(); return toISO(d.getFullYear(), d.getMonth(), d.getDate()); }
 function weekday(iso) { return ['周日', '周一', '周二', '周三', '周四', '周五', '周六'][parseISO(iso).getDay()]; }
 function todayCN() { const d = new Date(); return `${d.getFullYear()} 年 ${d.getMonth() + 1} 月 ${d.getDate()} 日`; }
+function lunarDayText(iso) {
+  try {
+    const d = parseISO(iso);
+    return window.Solar.fromYmd(d.getFullYear(), d.getMonth() + 1, d.getDate()).getLunar().getDayInChinese();
+  } catch (e) {
+    return '';
+  }
+}
 function shortDate(iso) { if (!iso) return ''; const d = parseISO(iso.slice(0, 10)); return `${d.getMonth() + 1}/${d.getDate()}`; }
 function fmtTime(iso) { const d = new Date(iso); return `${pad(d.getHours())}:${pad(d.getMinutes())}`; }
 function initial(name) { return (name || '?').trim().charAt(0) || '?'; }
@@ -490,7 +498,9 @@ function renderCalendar() {
     const restHtml = restDays.has(iso) ? '<span class="cal-rest">休</span>' : '';
     const doneHtml = done ? `<span class="cal-done">${done}项</span>` : '';
     const dotsHtml = uids.length ? `<div class="cal-dots">${uids.map(u => `<span class="cal-dot" style="background:${memberColor(u)}"></span>`).join('')}</div>` : '';
-    html += `<div class="${cls.join(' ')}" data-day="${iso}"><div class="cal-d">${d}</div>${restHtml}${dotsHtml}${doneHtml}</div>`;
+    const lunar = lunarDayText(iso);
+    const lunarHtml = lunar ? `<span class="cal-lunar">${lunar}</span>` : '';
+    html += `<div class="${cls.join(' ')}" data-day="${iso}"><div class="cal-d">${d}</div>${lunarHtml}${restHtml}${dotsHtml}${doneHtml}</div>`;
   }
   const tail = (7 - ((offset + daysInMonth) % 7)) % 7;
   for (let i = 0; i < tail; i++) html += '<div class="cal-cell dim"></div>';
@@ -597,6 +607,13 @@ function renderTodayList(list) {
       : `<button class="mx" data-tedit="${x.id}">编辑</button><button class="mx del" data-del="${x.id}">×</button>`;
     return `<div class="todo-item${x.done ? ' done' : ''}" data-id="${x.id}"><span class="grip" draggable="true" title="拖拽排序"><i></i><i></i><i></i></span><div class="cb${x.done ? ' on' : ''}"></div>${txt}${acts}</div>`;
   }).join('');
+  const editInput = document.getElementById('todo-edit-input');
+  if (editInput) editInput.onkeydown = e => {
+    if (e.key === 'Enter') {
+      const saveBtn = box.querySelector('[data-tsave]');
+      if (saveBtn) saveBtn.click();
+    }
+  };
   bindDrag(box, 'daily');
 }
 async function todayListClick(e) {
@@ -751,6 +768,13 @@ function renderLong() {
     return `<div class="todo-item${x.done ? ' done' : ''}" data-id="${x.id}"><span class="grip" draggable="true" title="拖拽排序"><i></i><i></i><i></i></span><div class="cb${x.done ? ' on' : ''}"></div>${txt}<span class="meta">${shortDate(x.created_at)}</span>${acts}</div>`;
   }).join('');
   box.onclick = longListClick;
+  const editInput = document.getElementById('long-edit-input');
+  if (editInput) editInput.onkeydown = e => {
+    if (e.key === 'Enter') {
+      const saveBtn = box.querySelector('[data-lsave]');
+      if (saveBtn) saveBtn.click();
+    }
+  };
   bindDrag(box, 'long');
 }
 async function longListClick(e) {
