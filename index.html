@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Team Hub</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="login" id="login" style="display:none;">
+    <div class="login-box">
+      <h2>Team Hub</h2>
+      <div class="ls" id="login-sub">登录团队工作台</div>
+      <form id="auth-form" autocomplete="on">
+        <input id="auth-username" placeholder="账号" required autocomplete="username">
+        <input id="auth-password" type="password" placeholder="密码" required autocomplete="current-password">
+        <button type="submit" id="auth-submit">登录</button>
+      </form>
+      <div class="auth-msg" id="auth-msg"></div>
+    </div>
+  </div>
+
+  <div class="wrap" id="app" style="display:none;">
+    <div class="header">
+      <div>
+        <h1>Team Hub</h1>
+        <div class="sub" id="header-sub"></div>
+      </div>
+      <div class="user">
+        <div class="av" id="u-av"></div>
+        <span class="un" id="u-name"></span>
+        <button class="out" id="u-password">改密码</button>
+        <button class="out" id="u-accounts" style="display:none;">账号管理</button>
+        <button class="out" id="u-out">退出</button>
+      </div>
+    </div>
+
+    <div class="tabs" id="main-tabs">
+      <button class="tab active" data-tab="t1">我的工作台</button>
+      <button class="tab" data-tab="t2">我的产品数据</button>
+    </div>
+
+    <section id="t1" class="panel active">
+      <div class="card">
+        <div class="cal-head">
+          <div class="cal-month" id="cal-month"></div>
+          <div class="cal-head-right">
+            <button class="cal-admin" id="cal-admin">标记休息</button>
+            <div class="cal-nav">
+              <button id="cal-prev" aria-label="上个月">‹</button>
+              <button id="cal-next" aria-label="下个月">›</button>
+            </div>
+          </div>
+        </div>
+        <div class="cal-cols">
+          <div class="left-col">
+            <div>
+              <div class="cal-grid" style="margin-bottom:4px;">
+                <div class="cal-h">一</div><div class="cal-h">二</div><div class="cal-h">三</div><div class="cal-h">四</div><div class="cal-h">五</div><div class="cal-h">六</div><div class="cal-h">日</div>
+              </div>
+              <div class="cal-grid" id="cal-grid"></div>
+            </div>
+            <div class="msg-area">
+              <div class="msg-head">
+                <span class="mt">此处应有贺电</span>
+                <span class="mc" id="msg-cnt">0 条 <button class="refresh" id="msg-refresh" title="刷新">刷新</button></span>
+              </div>
+              <div class="msg-list" id="msg-list"></div>
+              <div class="msg-input">
+                <input id="msg-text" placeholder="此处专收各类喜事信号，欢迎随时来报！好运连连！">
+                <button id="msg-send">发布</button>
+              </div>
+            </div>
+          </div>
+          <div class="right-col">
+            <div class="side-panel" id="day-panel" style="flex:1;"></div>
+            <div class="side-panel" style="flex:1;">
+              <div class="stitle">长期待办 <span class="cnt" id="long-cnt">0</span></div>
+              <div class="todo-input">
+                <input id="long-text" placeholder="添加长期待办，回车">
+                <button id="long-add">+</button>
+              </div>
+              <div class="side-scroll" id="long-list"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>任意门 <span class="link-head"><span class="hint">常用快捷入口 · 大家可添加</span><button class="refresh" id="link-trigger">+ 添加</button></span></h3>
+        <div id="links-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;"></div>
+        <div class="add-link" id="link-form" style="display:none;">
+          <input class="nm" id="link-name" placeholder="网站名">
+          <input class="uu" id="link-url" placeholder="https://...">
+          <button class="cf" id="link-confirm">添加</button>
+          <button class="cc" id="link-cancel">取消</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="t2" class="panel">
+      <div class="card">
+        <h3>我负责的数据模块 <span class="hint">新建后可导入数据 · 切换表格/折线/柱状</span></h3>
+        <div class="add-form">
+          <input id="m-name" placeholder="模块名 如 APP日活">
+          <input id="m-source" placeholder="数据来源 如 友盟">
+          <select id="m-line">
+            <option value="app">老板食神 APP</option>
+            <option value="miniApp">老板食神小程序</option>
+            <option value="robamMini">老板电器小程序</option>
+          </select>
+          <select id="m-sub">
+            <option value="overall">整体数据</option>
+            <option value="shenshen">食神概况</option>
+            <option value="pengyouquan">烹友圈概况</option>
+            <option value="meishi">美食概况</option>
+            <option value="shebei">设备概况</option>
+            <option value="mine">我的概况</option>
+          </select>
+          <button id="m-add">新建</button>
+        </div>
+        <div id="mod-list"></div>
+      </div>
+    </section>
+
+    <div id="account-page" style="display:none;">
+      <div class="page-head">
+        <button class="back-btn" id="acct-back">‹ 返回工作台</button>
+        <h2>账号管理</h2>
+      </div>
+      <div class="card">
+        <div class="account-add">
+          <input id="acct-name" placeholder="姓名">
+          <input id="acct-username" placeholder="账号">
+          <input id="acct-password" type="password" placeholder="初始密码">
+          <label class="acct-admin"><input type="checkbox" id="acct-is-admin"> 管理员</label>
+          <input type="color" class="acct-color" id="acct-color" value="#0071e3" title="颜色">
+          <button class="cf" id="acct-add">添加账号</button>
+        </div>
+        <div id="account-list"></div>
+        <div class="modal-msg" id="acct-msg"></div>
+      </div>
+    </div>
+
+    <div class="foot">Team Hub · 多用户在线版 · 数据存储于 Supabase · 登录后自动同步</div>
+  </div>
+
+  <div class="modal" id="password-modal">
+    <div class="modal-box">
+      <button class="modal-x" data-close="password-modal">×</button>
+      <h3>修改密码</h3>
+      <input id="pw-old" type="password" placeholder="原密码" autocomplete="current-password">
+      <input id="pw-new" type="password" placeholder="新密码（至少 6 位）" autocomplete="new-password">
+      <input id="pw-new2" type="password" placeholder="确认新密码" autocomplete="new-password">
+      <div class="form-hint">忘记密码？找管理员重置</div>
+      <div class="modal-msg" id="pw-msg"></div>
+      <div class="modal-actions">
+        <button class="cc" id="pw-cancel">取消</button>
+        <button class="cf" id="pw-save">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="csv-modal">
+    <div class="modal-box wide">
+      <button class="modal-x" data-close="csv-modal">×</button>
+      <h3>导入表格数据</h3>
+      <div id="csv-step1">
+        <input type="file" id="csv-file" accept=".csv,.xlsx,.xls,text/csv">
+        <div class="form-hint">支持 CSV / Excel，第一列必须是日期</div>
+      </div>
+      <div id="csv-preview" style="display:none;">
+        <div class="table-scroll">
+          <table class="data-table" id="csv-preview-table"></table>
+        </div>
+        <div class="form-hint">第一列为日期，默认已勾选；请勾选需要导入的其他列。</div>
+        <div class="csv-mapping-list" id="csv-mapping-list"></div>
+        <div class="form-hint">导入按日期覆盖：同名列会覆盖旧值，新列会追加。</div>
+        <div class="modal-actions">
+          <button class="cc" id="csv-cancel">取消</button>
+          <button class="cf" id="csv-confirm">确认导入</button>
+        </div>
+      </div>
+      <div class="modal-msg" id="csv-msg"></div>
+    </div>
+  </div>
+
+  <script src="supabase.min.js"></script>
+  <script src="xlsx.full.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
