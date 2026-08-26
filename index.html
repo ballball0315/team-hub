@@ -94,6 +94,7 @@
         <h3>任意门 <span class="link-head"><span class="hint">常用快捷入口 · 大家可添加</span><button class="refresh" id="link-trigger">+ 添加</button></span></h3>
         <div id="links-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;"></div>
         <div class="add-link" id="link-form" style="display:none;">
+          <input class="cat" id="link-category" placeholder="分类（可不填）">
           <input class="nm" id="link-name" placeholder="网站名">
           <input class="uu" id="link-url" placeholder="https://...">
           <button class="cf" id="link-confirm">添加</button>
@@ -102,9 +103,10 @@
       </div>
 
       <div class="card">
-        <h3>在线文档 <span class="link-head"><span class="hint">团队常用在线文档 · 大家可添加</span><button class="refresh" id="doc-trigger">+ 添加</button></span></h3>
+        <h3>在线文档 <span class="link-head"><span class="hint">常用在线文档 · 大家可添加</span><button class="refresh" id="doc-trigger">+ 添加</button></span></h3>
         <div id="docs-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;"></div>
         <div class="add-link" id="doc-form" style="display:none;">
+          <input class="cat" id="doc-category" placeholder="分类（可不填）">
           <input class="nm" id="doc-name" placeholder="文档名">
           <input class="uu" id="doc-url" placeholder="https://...">
           <button class="cf" id="doc-confirm">添加</button>
