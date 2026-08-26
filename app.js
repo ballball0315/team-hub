@@ -64,6 +64,7 @@ let chartPrefs = {};
 try { chartPrefs = JSON.parse(localStorage.getItem('teamhub_chart_prefs') || '{}'); } catch (e) {}
 let tablePage = {};
 let showLunar = false;
+let editingItem = null;
 
 /* ---------- 基础工具 ---------- */
 function pad(n) { return String(n).padStart(2, '0'); }
@@ -494,6 +495,7 @@ function renderAll() {
   renderLong();
   renderLinks();
   renderDocuments();
+  renderCategoryDatalists();
   renderMods();
   renderAdminBtn();
 }
@@ -1073,6 +1075,17 @@ function groupByCategory(items) {
   });
   return cats.map(c => ({ category: c, items: groups.get(c) }));
 }
+function uniqueCategories(items) {
+  return [...new Set(items.map(i => (i.category || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'zh-Hans-CN'));
+}
+function renderCategoryDatalists() {
+  const linkCats = uniqueCategories(links);
+  const docCats = uniqueCategories(documents);
+  document.getElementById('link-cat-list').innerHTML = linkCats.map(c => `<option value="${escapeHtml(c)}"></option>`).join('');
+  document.getElementById('doc-cat-list').innerHTML = docCats.map(c => `<option value="${escapeHtml(c)}"></option>`).join('');
+  const all = uniqueCategories([...links, ...documents]);
+  document.getElementById('item-edit-cat-list').innerHTML = all.map(c => `<option value="${escapeHtml(c)}"></option>`).join('');
+}
 function sortByName(items) {
   return [...items].sort((a, b) => {
     const an = (a.name || '').trim();
@@ -1093,13 +1106,18 @@ function renderLinks() {
   grid.style.display = 'block';
   grid.innerHTML = groupByCategory(links).map(g => {
     const cards = sortByName(g.items).map((l, i) => {
-    const canDel = currentAccount.is_admin || l.user_id === currentAccount.id;
-    const del = canDel ? `<button class="lx" data-ldel="${l.id}" onclick="event.preventDefault();event.stopPropagation();">×</button>` : '';
-    const color = LINK_PALETTE[i % LINK_PALETTE.length];
-    return `<a class="link-card" href="${escapeHtml(l.url)}" target="_blank" rel="noopener"><span class="link-icon" style="background:${color}">${escapeHtml(initial(l.name))}</span><span class="link-body"><span class="link-name">${escapeHtml(l.name)}</span><span class="link-url">${escapeHtml(l.url)}</span></span>${del}</a>`;
+      const canDel = currentAccount.is_admin || l.user_id === currentAccount.id;
+      const actions = canDel
+        ? `<span class="card-actions"><button class="lx" data-ledit="${l.id}" onclick="event.preventDefault();event.stopPropagation();">编辑</button><button class="lx" data-ldel="${l.id}" onclick="event.preventDefault();event.stopPropagation();">×</button></span>`
+        : '';
+      const color = LINK_PALETTE[i % LINK_PALETTE.length];
+      return `<a class="link-card" href="${escapeHtml(l.url)}" target="_blank" rel="noopener"><span class="link-icon" style="background:${color}">${escapeHtml(initial(l.name))}</span><span class="link-body"><span class="link-name">${escapeHtml(l.name)}</span><span class="link-url">${escapeHtml(l.url)}</span></span>${actions}</a>`;
     }).join('');
     return `<div class="cat-section"><div class="cat-title">${escapeHtml(g.category)}</div><div class="cat-grid">${cards}</div></div>`;
   }).join('');
+  grid.querySelectorAll('[data-ledit]').forEach(b => {
+    b.onclick = () => openEditItem('link', Number(b.dataset.ledit));
+  });
   grid.querySelectorAll('[data-ldel]').forEach(b => {
     b.onclick = () => {
       if (!confirm('确认删除该快捷入口？')) return;
@@ -1158,11 +1176,14 @@ function renderDocuments() {
   grid.innerHTML = groupByCategory(documents).map(g => {
     const items = sortByName(g.items).map(d => {
       const canDel = currentAccount.is_admin || d.user_id === currentAccount.id;
-      const del = canDel ? `<button class="lx" data-ddel="${d.id}" onclick="event.preventDefault();event.stopPropagation();">×</button>` : '';
-      return `<a class="doc-card" href="${escapeHtml(d.url)}" target="_blank" rel="noopener"><span class="doc-icon">📄</span><span class="doc-body"><span class="doc-name">${escapeHtml(d.name)}</span><span class="doc-url">${escapeHtml(d.url)}</span></span>${del}</a>`;
+      const actions = canDel ? `<div class="doc-actions"><button data-dedit="${d.id}">编辑</button><button data-ddel="${d.id}">删除</button></div>` : '<div class="doc-actions"></div>';
+      return `<div class="doc-row"><a class="doc-name" href="${escapeHtml(d.url)}" target="_blank" rel="noopener">${escapeHtml(d.name)}</a><a class="doc-url" href="${escapeHtml(d.url)}" target="_blank" rel="noopener">${escapeHtml(d.url)}</a>${actions}</div>`;
     }).join('');
-    return `<div class="cat-section"><div class="cat-title">${escapeHtml(g.category)}</div><div class="doc-list">${items}</div></div>`;
+    return `<div class="cat-section"><div class="cat-title">${escapeHtml(g.category)}</div><div class="doc-table"><div class="doc-row doc-head"><span>名称</span><span>网址</span><span class="doc-act-col">操作</span></div>${items}</div></div>`;
   }).join('');
+  grid.querySelectorAll('[data-dedit]').forEach(b => {
+    b.onclick = () => openEditItem('doc', Number(b.dataset.dedit));
+  });
   grid.querySelectorAll('[data-ddel]').forEach(b => {
     b.onclick = () => {
       if (!confirm('确认删除该在线文档？')) return;
@@ -1207,6 +1228,40 @@ document.getElementById('doc-confirm').onclick = async () => {
     if (idx >= 0) documents[idx] = data;
   }
   renderDocuments();
+};
+
+function openEditItem(kind, id) {
+  const item = (kind === 'link' ? links : documents).find(x => x.id === id);
+  if (!item) return;
+  editingItem = { kind, id };
+  document.getElementById('item-edit-title').textContent = kind === 'link' ? '编辑快捷入口' : '编辑在线文档';
+  document.getElementById('item-edit-name').value = item.name;
+  document.getElementById('item-edit-url').value = item.url;
+  document.getElementById('item-edit-category').value = item.category || '';
+  document.getElementById('item-edit-msg').textContent = '';
+  document.getElementById('item-edit-msg').className = 'modal-msg';
+  renderCategoryDatalists();
+  openModal('item-edit-modal');
+}
+document.getElementById('item-edit-cancel').onclick = () => closeModal('item-edit-modal');
+document.getElementById('item-edit-save').onclick = async () => {
+  if (!editingItem) return;
+  const kind = editingItem.kind;
+  const id = editingItem.id;
+  const name = document.getElementById('item-edit-name').value.trim();
+  const url = document.getElementById('item-edit-url').value.trim();
+  const category = document.getElementById('item-edit-category').value.trim();
+  const msg = document.getElementById('item-edit-msg');
+  if (!name || !url) { msg.textContent = '名称和网址不能为空'; msg.className = 'modal-msg err'; return; }
+  const table = kind === 'link' ? 'links' : 'documents';
+  const { error } = await supabase.from(table).update({ name, url, category }).eq('id', id);
+  if (error) { msg.textContent = friendlyText(error); msg.className = 'modal-msg err'; return; }
+  closeModal('item-edit-modal');
+  editingItem = null;
+  if (kind === 'link') await loadLinks(); else await loadDocuments();
+  renderLinks();
+  renderDocuments();
+  renderCategoryDatalists();
 };
 
 /* ---------- 数据模块 ---------- */
