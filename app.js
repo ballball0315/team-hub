@@ -39,6 +39,7 @@ let monthLikes = {};
 let monthDailyTodos = [];
 let longTodos = [];
 let links = [];
+let documents = [];
 let myModules = [];
 let allModules = [];
 let accountList = [];
@@ -455,6 +456,11 @@ async function loadLinks() {
   if (error) { toastError(error); return; }
   links = data || [];
 }
+async function loadDocuments() {
+  const { data, error } = await supabase.from('documents').select('*').order('created_at', { ascending: true });
+  if (error) { toastError(error); return; }
+  documents = data || [];
+}
 async function loadModules() {
   const { data, error } = await supabase.from('data_modules').select('*').order('created_at', { ascending: true });
   if (error) { toastError(error); return; }
@@ -474,7 +480,7 @@ function renderAppShell() {
 }
 async function loadAppData() {
   try {
-    await Promise.all([loadMembers(), loadCalendarData(), loadLongTodos(), loadLinks(), loadModules()]);
+    await Promise.all([loadMembers(), loadCalendarData(), loadLongTodos(), loadLinks(), loadDocuments(), loadModules()]);
   } catch (e) {
     toastError(e);
   }
@@ -487,6 +493,7 @@ function renderAll() {
   renderMessages();
   renderLong();
   renderLinks();
+  renderDocuments();
   renderMods();
   renderAdminBtn();
 }
@@ -501,11 +508,9 @@ function saveSnapshot() {
       monthDailyTodos,
       longTodos,
       links,
+      documents,
       allModules,
-      myModules,
-      viewYear,
-      viewMonth,
-      selISO
+      myModules
     }));
   } catch (e) {}
 }
@@ -522,11 +527,9 @@ function loadSnapshot() {
     monthDailyTodos = s.monthDailyTodos || [];
     longTodos = s.longTodos || [];
     links = s.links || [];
+    documents = s.documents || [];
     allModules = s.allModules || [];
     myModules = s.myModules || [];
-    viewYear = s.viewYear || new Date().getFullYear();
-    viewMonth = (s.viewMonth ?? new Date().getMonth());
-    selISO = s.selISO || todayISO();
     return true;
   } catch (e) {
     return false;
@@ -1119,6 +1122,65 @@ document.getElementById('link-confirm').onclick = async () => {
     if (idx >= 0) links[idx] = data;
   }
   renderLinks();
+};
+
+function renderDocuments() {
+  const grid = document.getElementById('docs-grid');
+  if (!grid) return;
+  if (!documents.length) {
+    grid.style.display = 'block';
+    grid.innerHTML = '<div class="empty">暂无在线文档，添加一个吧</div>';
+    return;
+  }
+  grid.style.display = 'grid';
+  const sorted = [...documents].sort((a, b) => (a.name || '').localeCompare(b.name || '', 'zh-Hans-CN'));
+  grid.innerHTML = sorted.map((d, i) => {
+    const canDel = currentAccount.is_admin || d.user_id === currentAccount.id;
+    const del = canDel ? `<button class="lx" data-ddel="${d.id}" onclick="event.preventDefault();event.stopPropagation();">×</button>` : '';
+    const color = LINK_PALETTE[i % LINK_PALETTE.length];
+    return `<a class="link-card doc-card" href="${escapeHtml(d.url)}" target="_blank" rel="noopener"><span class="link-icon doc-icon" style="background:${color}">📄</span><span class="link-body"><span class="link-name">${escapeHtml(d.name)}</span><span class="link-url">${escapeHtml(d.url)}</span></span>${del}</a>`;
+  }).join('');
+  grid.querySelectorAll('[data-ddel]').forEach(b => {
+    b.onclick = () => {
+      if (!confirm('确认删除该在线文档？')) return;
+      const id = Number(b.dataset.ddel);
+      documents = documents.filter(d => d.id !== id);
+      renderDocuments();
+      supabase.from('documents').delete().eq('id', id).then(({ error }) => {
+        if (error) { toastError(error); loadDocuments().then(renderDocuments); }
+      });
+    };
+  });
+}
+document.getElementById('doc-trigger').onclick = () => {
+  const f = document.getElementById('doc-form');
+  f.style.display = f.style.display === 'none' ? 'flex' : 'none';
+  if (f.style.display === 'flex') document.getElementById('doc-name').focus();
+};
+document.getElementById('doc-cancel').onclick = () => {
+  document.getElementById('doc-form').style.display = 'none';
+  document.getElementById('doc-name').value = '';
+  document.getElementById('doc-url').value = '';
+};
+document.getElementById('doc-confirm').onclick = async () => {
+  const name = document.getElementById('doc-name').value.trim();
+  const url = document.getElementById('doc-url').value.trim();
+  if (!name || !url) return;
+  const tempId = Date.now();
+  documents.push({ id: tempId, name, url, user_id: currentAccount.id, created_at: new Date().toISOString() });
+  document.getElementById('doc-name').value = '';
+  document.getElementById('doc-url').value = '';
+  document.getElementById('doc-form').style.display = 'none';
+  renderDocuments();
+  const { data, error } = await supabase.from('documents').insert({ name, url, user_id: currentAccount.id }).select().single();
+  if (error) {
+    documents = documents.filter(d => d.id !== tempId);
+    toastError(error);
+  } else if (data) {
+    const idx = documents.findIndex(d => d.id === tempId);
+    if (idx >= 0) documents[idx] = data;
+  }
+  renderDocuments();
 };
 
 /* ---------- 数据模块 ---------- */
