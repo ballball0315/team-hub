@@ -94,24 +94,26 @@
         <h3>任意门 <span class="link-head"><span class="hint">常用快捷入口 · 大家可添加</span><button class="refresh" id="link-trigger">+ 添加</button></span></h3>
         <div id="links-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;"></div>
         <div class="add-link" id="link-form" style="display:none;">
-          <input class="cat" id="link-category" placeholder="分类（可不填）">
+          <input class="cat" id="link-category" list="link-cat-list" placeholder="分类（可不填）">
           <input class="nm" id="link-name" placeholder="网站名">
           <input class="uu" id="link-url" placeholder="https://...">
           <button class="cf" id="link-confirm">添加</button>
           <button class="cc" id="link-cancel">取消</button>
         </div>
+        <datalist id="link-cat-list"></datalist>
       </div>
 
       <div class="card">
         <h3>在线文档 <span class="link-head"><span class="hint">常用在线文档 · 大家可添加</span><button class="refresh" id="doc-trigger">+ 添加</button></span></h3>
         <div id="docs-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;"></div>
         <div class="add-link" id="doc-form" style="display:none;">
-          <input class="cat" id="doc-category" placeholder="分类（可不填）">
+          <input class="cat" id="doc-category" list="doc-cat-list" placeholder="分类（可不填）">
           <input class="nm" id="doc-name" placeholder="文档名">
           <input class="uu" id="doc-url" placeholder="https://...">
           <button class="cf" id="doc-confirm">添加</button>
           <button class="cc" id="doc-cancel">取消</button>
         </div>
+        <datalist id="doc-cat-list"></datalist>
       </div>
     </section>
 
@@ -199,6 +201,22 @@
         </div>
       </div>
       <div class="modal-msg" id="csv-msg"></div>
+    </div>
+  </div>
+
+  <div class="modal" id="item-edit-modal">
+    <div class="modal-box">
+      <button class="modal-x" data-close="item-edit-modal">×</button>
+      <h3 id="item-edit-title">编辑</h3>
+      <input id="item-edit-name" placeholder="名称">
+      <input id="item-edit-url" placeholder="https://...">
+      <input id="item-edit-category" list="item-edit-cat-list" placeholder="分类（可不填）">
+      <datalist id="item-edit-cat-list"></datalist>
+      <div class="modal-msg" id="item-edit-msg"></div>
+      <div class="modal-actions">
+        <button class="cc" id="item-edit-cancel">取消</button>
+        <button class="cf" id="item-edit-save">保存</button>
+      </div>
     </div>
   </div>
 
