@@ -100,6 +100,17 @@
           <button class="cc" id="link-cancel">取消</button>
         </div>
       </div>
+
+      <div class="card">
+        <h3>在线文档 <span class="link-head"><span class="hint">团队常用在线文档 · 大家可添加</span><button class="refresh" id="doc-trigger">+ 添加</button></span></h3>
+        <div id="docs-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;"></div>
+        <div class="add-link" id="doc-form" style="display:none;">
+          <input class="nm" id="doc-name" placeholder="文档名">
+          <input class="uu" id="doc-url" placeholder="https://...">
+          <button class="cf" id="doc-confirm">添加</button>
+          <button class="cc" id="doc-cancel">取消</button>
+        </div>
+      </div>
     </section>
 
     <section id="t2" class="panel">
