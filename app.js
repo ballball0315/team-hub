@@ -1059,6 +1059,30 @@ document.getElementById('msg-send').onclick = sendMsg;
 document.getElementById('msg-text').onkeydown = e => { if (e.key === 'Enter') sendMsg(); };
 
 /* ---------- 任意门 ---------- */
+function groupByCategory(items) {
+  const groups = new Map();
+  items.forEach(item => {
+    const cat = (item.category || '').trim() || '待整理';
+    if (!groups.has(cat)) groups.set(cat, []);
+    groups.get(cat).push(item);
+  });
+  const cats = [...groups.keys()].sort((a, b) => {
+    if (a === '待整理') return 1;
+    if (b === '待整理') return -1;
+    return a.localeCompare(b, 'zh-Hans-CN');
+  });
+  return cats.map(c => ({ category: c, items: groups.get(c) }));
+}
+function sortByName(items) {
+  return [...items].sort((a, b) => {
+    const an = (a.name || '').trim();
+    const bn = (b.name || '').trim();
+    const al = /^[A-Za-z]/.test(an);
+    const bl = /^[A-Za-z]/.test(bn);
+    if (al !== bl) return al ? -1 : 1;
+    return an.localeCompare(bn, 'zh-Hans-CN');
+  });
+}
 function renderLinks() {
   const grid = document.getElementById('links-grid');
   if (!links.length) {
@@ -1066,20 +1090,15 @@ function renderLinks() {
     grid.innerHTML = '<div class="empty">暂无快捷入口，添加一个吧</div>';
     return;
   }
-  grid.style.display = 'grid';
-  const sorted = [...links].sort((a, b) => {
-    const aName = (a.name || '').trim();
-    const bName = (b.name || '').trim();
-    const aLatin = /^[A-Za-z]/.test(aName);
-    const bLatin = /^[A-Za-z]/.test(bName);
-    if (aLatin !== bLatin) return aLatin ? -1 : 1;
-    return aName.localeCompare(bName, 'zh-Hans-CN');
-  });
-  grid.innerHTML = sorted.map((l, i) => {
+  grid.style.display = 'block';
+  grid.innerHTML = groupByCategory(links).map(g => {
+    const cards = sortByName(g.items).map((l, i) => {
     const canDel = currentAccount.is_admin || l.user_id === currentAccount.id;
     const del = canDel ? `<button class="lx" data-ldel="${l.id}" onclick="event.preventDefault();event.stopPropagation();">×</button>` : '';
     const color = LINK_PALETTE[i % LINK_PALETTE.length];
     return `<a class="link-card" href="${escapeHtml(l.url)}" target="_blank" rel="noopener"><span class="link-icon" style="background:${color}">${escapeHtml(initial(l.name))}</span><span class="link-body"><span class="link-name">${escapeHtml(l.name)}</span><span class="link-url">${escapeHtml(l.url)}</span></span>${del}</a>`;
+    }).join('');
+    return `<div class="cat-section"><div class="cat-title">${escapeHtml(g.category)}</div><div class="cat-grid">${cards}</div></div>`;
   }).join('');
   grid.querySelectorAll('[data-ldel]').forEach(b => {
     b.onclick = () => {
@@ -1100,20 +1119,23 @@ document.getElementById('link-trigger').onclick = () => {
 };
 document.getElementById('link-cancel').onclick = () => {
   document.getElementById('link-form').style.display = 'none';
+  document.getElementById('link-category').value = '';
   document.getElementById('link-name').value = '';
   document.getElementById('link-url').value = '';
 };
 document.getElementById('link-confirm').onclick = async () => {
+  const category = document.getElementById('link-category').value.trim();
   const name = document.getElementById('link-name').value.trim();
   const url = document.getElementById('link-url').value.trim();
   if (!name || !url) return;
   const tempId = Date.now();
-  links.push({ id: tempId, name, url, user_id: currentAccount.id, created_at: new Date().toISOString() });
+  links.push({ id: tempId, name, url, category, user_id: currentAccount.id, created_at: new Date().toISOString() });
+  document.getElementById('link-category').value = '';
   document.getElementById('link-name').value = '';
   document.getElementById('link-url').value = '';
   document.getElementById('link-form').style.display = 'none';
   renderLinks();
-  const { data, error } = await supabase.from('links').insert({ name, url, user_id: currentAccount.id }).select().single();
+  const { data, error } = await supabase.from('links').insert({ name, url, category, user_id: currentAccount.id }).select().single();
   if (error) {
     links = links.filter(l => l.id !== tempId);
     toastError(error);
@@ -1132,13 +1154,14 @@ function renderDocuments() {
     grid.innerHTML = '<div class="empty">暂无在线文档，添加一个吧</div>';
     return;
   }
-  grid.style.display = 'grid';
-  const sorted = [...documents].sort((a, b) => (a.name || '').localeCompare(b.name || '', 'zh-Hans-CN'));
-  grid.innerHTML = sorted.map((d, i) => {
-    const canDel = currentAccount.is_admin || d.user_id === currentAccount.id;
-    const del = canDel ? `<button class="lx" data-ddel="${d.id}" onclick="event.preventDefault();event.stopPropagation();">×</button>` : '';
-    const color = LINK_PALETTE[i % LINK_PALETTE.length];
-    return `<a class="link-card doc-card" href="${escapeHtml(d.url)}" target="_blank" rel="noopener"><span class="link-icon doc-icon" style="background:${color}">📄</span><span class="link-body"><span class="link-name">${escapeHtml(d.name)}</span><span class="link-url">${escapeHtml(d.url)}</span></span>${del}</a>`;
+  grid.style.display = 'block';
+  grid.innerHTML = groupByCategory(documents).map(g => {
+    const items = sortByName(g.items).map(d => {
+      const canDel = currentAccount.is_admin || d.user_id === currentAccount.id;
+      const del = canDel ? `<button class="lx" data-ddel="${d.id}" onclick="event.preventDefault();event.stopPropagation();">×</button>` : '';
+      return `<a class="doc-card" href="${escapeHtml(d.url)}" target="_blank" rel="noopener"><span class="doc-icon">📄</span><span class="doc-body"><span class="doc-name">${escapeHtml(d.name)}</span><span class="doc-url">${escapeHtml(d.url)}</span></span>${del}</a>`;
+    }).join('');
+    return `<div class="cat-section"><div class="cat-title">${escapeHtml(g.category)}</div><div class="doc-list">${items}</div></div>`;
   }).join('');
   grid.querySelectorAll('[data-ddel]').forEach(b => {
     b.onclick = () => {
@@ -1159,20 +1182,23 @@ document.getElementById('doc-trigger').onclick = () => {
 };
 document.getElementById('doc-cancel').onclick = () => {
   document.getElementById('doc-form').style.display = 'none';
+  document.getElementById('doc-category').value = '';
   document.getElementById('doc-name').value = '';
   document.getElementById('doc-url').value = '';
 };
 document.getElementById('doc-confirm').onclick = async () => {
+  const category = document.getElementById('doc-category').value.trim();
   const name = document.getElementById('doc-name').value.trim();
   const url = document.getElementById('doc-url').value.trim();
   if (!name || !url) return;
   const tempId = Date.now();
-  documents.push({ id: tempId, name, url, user_id: currentAccount.id, created_at: new Date().toISOString() });
+  documents.push({ id: tempId, name, url, category, user_id: currentAccount.id, created_at: new Date().toISOString() });
+  document.getElementById('doc-category').value = '';
   document.getElementById('doc-name').value = '';
   document.getElementById('doc-url').value = '';
   document.getElementById('doc-form').style.display = 'none';
   renderDocuments();
-  const { data, error } = await supabase.from('documents').insert({ name, url, user_id: currentAccount.id }).select().single();
+  const { data, error } = await supabase.from('documents').insert({ name, url, category, user_id: currentAccount.id }).select().single();
   if (error) {
     documents = documents.filter(d => d.id !== tempId);
     toastError(error);
