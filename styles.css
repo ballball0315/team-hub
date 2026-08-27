@@ -121,6 +121,14 @@ input,select{font-family:inherit;font-size:13px;}
 .day-birthday .btext{flex:1;}
 .day-birthday .bwish{padding:4px 12px;border:none;border-radius:8px;background:var(--pink);color:#fff;font-size:12px;}
 .day-birthday .bwish:hover{opacity:.9;}
+.week-sec{margin-bottom:16px;}
+.week-sec-title{font-size:13px;font-weight:600;color:var(--tx2);margin-bottom:8px;}
+.week-list{margin:0;padding-left:18px;}
+.week-list li{font-size:13px;color:var(--tx);margin-bottom:4px;}
+.week-msgs{display:flex;flex-direction:column;gap:6px;}
+.week-msg{display:flex;align-items:baseline;gap:8px;font-size:13px;}
+.week-msg .w-name{font-weight:600;color:var(--tx2);flex-shrink:0;}
+.week-msg .w-text{color:var(--tx);word-break:break-word;}
 
 /* 贺电 */
 .msg-area{padding-top:16px;border-top:1px solid var(--line);display:flex;flex-direction:column;flex-shrink:0;}
