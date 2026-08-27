@@ -49,6 +49,7 @@
             <button class="today-btn" id="cal-today">回到今日</button>
           </div>
           <div class="cal-head-right">
+            <button class="week-summary-btn" id="week-summary-btn">本周总结</button>
             <button class="cal-admin" id="cal-admin">标记休息</button>
             <div class="cal-nav">
               <button id="cal-prev" aria-label="上个月">‹</button>
@@ -88,11 +89,6 @@
             </div>
           </div>
         </div>
-      </div>
-
-      <div class="card" id="week-summary-card">
-        <h3>本周总结 <span class="hint" id="week-range"></span></h3>
-        <div id="week-summary"></div>
       </div>
 
       <div class="card">
@@ -222,6 +218,14 @@
         <button class="cc" id="item-edit-cancel">取消</button>
         <button class="cf" id="item-edit-save">保存</button>
       </div>
+    </div>
+  </div>
+
+  <div class="modal" id="week-modal">
+    <div class="modal-box wide">
+      <button class="modal-x" data-close="week-modal">×</button>
+      <h3>本周总结 <span class="hint" id="week-range"></span></h3>
+      <div id="week-summary"></div>
     </div>
   </div>
 
