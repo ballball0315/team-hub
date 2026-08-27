@@ -1083,8 +1083,6 @@ function renderCategoryDatalists() {
   const docCats = uniqueCategories(documents);
   document.getElementById('link-cat-list').innerHTML = linkCats.map(c => `<option value="${escapeHtml(c)}"></option>`).join('');
   document.getElementById('doc-cat-list').innerHTML = docCats.map(c => `<option value="${escapeHtml(c)}"></option>`).join('');
-  const all = uniqueCategories([...links, ...documents]);
-  document.getElementById('item-edit-cat-list').innerHTML = all.map(c => `<option value="${escapeHtml(c)}"></option>`).join('');
 }
 function sortByName(items) {
   return [...items].sort((a, b) => {
@@ -1105,15 +1103,15 @@ function renderLinks() {
   }
   grid.style.display = 'block';
   grid.innerHTML = groupByCategory(links).map(g => {
-    const cards = sortByName(g.items).map((l, i) => {
+    const rows = sortByName(g.items).map((l, i) => {
       const canDel = currentAccount.is_admin || l.user_id === currentAccount.id;
       const actions = canDel
-        ? `<span class="card-actions"><button class="lx" data-ledit="${l.id}" onclick="event.preventDefault();event.stopPropagation();">编辑</button><button class="lx" data-ldel="${l.id}" onclick="event.preventDefault();event.stopPropagation();">×</button></span>`
-        : '';
+        ? `<div class="link-actions"><button data-ledit="${l.id}">编辑</button><button data-ldel="${l.id}">删除</button></div>`
+        : '<div class="link-actions"></div>';
       const color = LINK_PALETTE[i % LINK_PALETTE.length];
-      return `<a class="link-card" href="${escapeHtml(l.url)}" target="_blank" rel="noopener"><span class="link-icon" style="background:${color}">${escapeHtml(initial(l.name))}</span><span class="link-body"><span class="link-name">${escapeHtml(l.name)}</span><span class="link-url">${escapeHtml(l.url)}</span></span>${actions}</a>`;
+      return `<div class="link-row"><a class="link-cell-name" href="${escapeHtml(l.url)}" target="_blank" rel="noopener"><span class="link-cell-icon" style="background:${color}">${escapeHtml(initial(l.name))}</span><span>${escapeHtml(l.name)}</span></a><a class="link-cell-url" href="${escapeHtml(l.url)}" target="_blank" rel="noopener">${escapeHtml(l.url)}</a>${actions}</div>`;
     }).join('');
-    return `<div class="cat-section"><div class="cat-title">${escapeHtml(g.category)}</div><div class="cat-grid">${cards}</div></div>`;
+    return `<div class="cat-section"><div class="cat-title">${escapeHtml(g.category)}</div><div class="link-table"><div class="link-row link-row-head"><span>名称</span><span>网址</span><span class="link-act-col">操作</span></div>${rows}</div></div>`;
   }).join('');
   grid.querySelectorAll('[data-ledit]').forEach(b => {
     b.onclick = () => openEditItem('link', Number(b.dataset.ledit));
@@ -1240,7 +1238,8 @@ function openEditItem(kind, id) {
   document.getElementById('item-edit-category').value = item.category || '';
   document.getElementById('item-edit-msg').textContent = '';
   document.getElementById('item-edit-msg').className = 'modal-msg';
-  renderCategoryDatalists();
+  const cats = uniqueCategories(kind === 'link' ? links : documents);
+  document.getElementById('item-edit-cat-list').innerHTML = cats.map(c => `<option value="${escapeHtml(c)}"></option>`).join('');
   openModal('item-edit-modal');
 }
 document.getElementById('item-edit-cancel').onclick = () => closeModal('item-edit-modal');
