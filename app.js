@@ -105,6 +105,18 @@ function birthdayText(iso) {
   }
   return matches.join('、');
 }
+function weekRange(iso) {
+  const d = parseISO(iso);
+  const diffToMonday = (d.getDay() + 6) % 7;
+  const monday = new Date(d);
+  monday.setDate(d.getDate() - diffToMonday);
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  return {
+    start: toISO(monday.getFullYear(), monday.getMonth(), monday.getDate()),
+    end: toISO(sunday.getFullYear(), sunday.getMonth(), sunday.getDate())
+  };
+}
 function shortDate(iso) { if (!iso) return ''; const d = parseISO(iso.slice(0, 10)); return `${d.getMonth() + 1}/${d.getDate()}`; }
 function fmtTime(iso) { const d = new Date(iso); return `${pad(d.getHours())}:${pad(d.getMinutes())}`; }
 function initial(name) { return (name || '?').trim().charAt(0) || '?'; }
@@ -498,6 +510,7 @@ function renderAll() {
   renderCategoryDatalists();
   renderMods();
   renderAdminBtn();
+  renderWeekSummary();
 }
 function saveSnapshot() {
   if (!currentAccount) return;
@@ -700,6 +713,18 @@ async function wishBirthday(names, day) {
   }
   renderCalendar();
   renderDayPanel();
+}
+function renderWeekSummary() {
+  const box = document.getElementById('week-summary');
+  if (!box) return;
+  if (!selISO) { box.innerHTML = '<div class="empty">选择日期查看本周总结</div>'; return; }
+  const { start, end } = weekRange(selISO);
+  document.getElementById('week-range').textContent = `${start} ~ ${end}`;
+  const doneTodos = monthDailyTodos.filter(t => t.day >= start && t.day <= end && t.done);
+  const msgs = monthMessages.filter(m => m.day >= start && m.day <= end);
+  let html = `<div class="week-sec"><div class="week-sec-title">完成待办</div>${doneTodos.length ? `<ul class="week-list">${doneTodos.map(t => `<li>${escapeHtml(t.text)}</li>`).join('')}</ul>` : '<div class="empty">本周暂无完成待办</div>'}</div>`;
+  html += `<div class="week-sec"><div class="week-sec-title">贺电</div>${msgs.length ? `<div class="week-msgs">${msgs.map(m => `<div class="week-msg"><span class="w-name">${escapeHtml(memberName(m.user_id))}</span><span class="w-text">${escapeHtml(m.text)}</span></div>`).join('')}</div>` : '<div class="empty">本周暂无贺电</div>'}</div>`;
+  box.innerHTML = html;
 }
 function renderTodayList(list) {
   const box = document.getElementById('today-list');
@@ -1120,6 +1145,8 @@ function renderLinks() {
     b.onclick = () => {
       if (!confirm('确认删除该快捷入口？')) return;
       const id = Number(b.dataset.ldel);
+      const item = links.find(l => l.id === id);
+      if (item && item.temp) { toast('该条还在保存中，请稍候再删除', true); return; }
       links = links.filter(l => l.id !== id);
       renderLinks();
       supabase.from('links').delete().eq('id', id).then(({ error }) => {
@@ -1145,7 +1172,7 @@ document.getElementById('link-confirm').onclick = async () => {
   const url = document.getElementById('link-url').value.trim();
   if (!name || !url) return;
   const tempId = Date.now();
-  links.push({ id: tempId, name, url, category, user_id: currentAccount.id, created_at: new Date().toISOString() });
+  links.push({ id: tempId, temp: true, name, url, category, user_id: currentAccount.id, created_at: new Date().toISOString() });
   document.getElementById('link-category').value = '';
   document.getElementById('link-name').value = '';
   document.getElementById('link-url').value = '';
@@ -1186,6 +1213,8 @@ function renderDocuments() {
     b.onclick = () => {
       if (!confirm('确认删除该在线文档？')) return;
       const id = Number(b.dataset.ddel);
+      const item = documents.find(d => d.id === id);
+      if (item && item.temp) { toast('该条还在保存中，请稍候再删除', true); return; }
       documents = documents.filter(d => d.id !== id);
       renderDocuments();
       supabase.from('documents').delete().eq('id', id).then(({ error }) => {
@@ -1211,7 +1240,7 @@ document.getElementById('doc-confirm').onclick = async () => {
   const url = document.getElementById('doc-url').value.trim();
   if (!name || !url) return;
   const tempId = Date.now();
-  documents.push({ id: tempId, name, url, category, user_id: currentAccount.id, created_at: new Date().toISOString() });
+  documents.push({ id: tempId, temp: true, name, url, category, user_id: currentAccount.id, created_at: new Date().toISOString() });
   document.getElementById('doc-category').value = '';
   document.getElementById('doc-name').value = '';
   document.getElementById('doc-url').value = '';
@@ -1231,6 +1260,7 @@ document.getElementById('doc-confirm').onclick = async () => {
 function openEditItem(kind, id) {
   const item = (kind === 'link' ? links : documents).find(x => x.id === id);
   if (!item) return;
+  if (item.temp) { toast('该条还在保存中，请稍候再编辑', true); return; }
   editingItem = { kind, id };
   document.getElementById('item-edit-title').textContent = kind === 'link' ? '编辑快捷入口' : '编辑在线文档';
   document.getElementById('item-edit-name').value = item.name;
