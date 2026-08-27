@@ -510,7 +510,6 @@ function renderAll() {
   renderCategoryDatalists();
   renderMods();
   renderAdminBtn();
-  renderWeekSummary();
 }
 function saveSnapshot() {
   if (!currentAccount) return;
@@ -633,6 +632,7 @@ document.getElementById('cal-today').onclick = async () => {
   renderMessages();
   renderAdminBtn();
 };
+document.getElementById('week-summary-btn').onclick = () => renderWeekSummary();
 document.getElementById('cal-admin').onclick = async () => {
   if (!selISO) return;
   if (restDays.has(selISO)) {
@@ -717,14 +717,20 @@ async function wishBirthday(names, day) {
 function renderWeekSummary() {
   const box = document.getElementById('week-summary');
   if (!box) return;
-  if (!selISO) { box.innerHTML = '<div class="empty">选择日期查看本周总结</div>'; return; }
+  if (!selISO) { box.innerHTML = '<div class="empty">选择日期查看本周总结</div>'; openModal('week-modal'); return; }
   const { start, end } = weekRange(selISO);
   document.getElementById('week-range').textContent = `${start} ~ ${end}`;
   const doneTodos = monthDailyTodos.filter(t => t.day >= start && t.day <= end && t.done);
   const msgs = monthMessages.filter(m => m.day >= start && m.day <= end);
+  if (!doneTodos.length && !msgs.length) {
+    box.innerHTML = '<div class="empty" style="height:160px;display:flex;align-items:center;justify-content:center;">本周没有数据</div>';
+    openModal('week-modal');
+    return;
+  }
   let html = `<div class="week-sec"><div class="week-sec-title">完成待办</div>${doneTodos.length ? `<ul class="week-list">${doneTodos.map(t => `<li>${escapeHtml(t.text)}</li>`).join('')}</ul>` : '<div class="empty">本周暂无完成待办</div>'}</div>`;
   html += `<div class="week-sec"><div class="week-sec-title">贺电</div>${msgs.length ? `<div class="week-msgs">${msgs.map(m => `<div class="week-msg"><span class="w-name">${escapeHtml(memberName(m.user_id))}</span><span class="w-text">${escapeHtml(m.text)}</span></div>`).join('')}</div>` : '<div class="empty">本周暂无贺电</div>'}</div>`;
   box.innerHTML = html;
+  openModal('week-modal');
 }
 function renderTodayList(list) {
   const box = document.getElementById('today-list');
