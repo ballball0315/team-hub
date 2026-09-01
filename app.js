@@ -655,7 +655,15 @@ function renderDayPanel() {
   }
   const list = monthDailyTodos
     .filter(t => t.day === selISO)
-    .sort((a, b) => a.position - b.position || a.id - b.id);
+    .sort((a, b) => {
+      if (a.done !== b.done) return a.done ? 1 : -1;
+      if (a.done) {
+        const at = a.completed_at ? new Date(a.completed_at).getTime() : 0;
+        const bt = b.completed_at ? new Date(b.completed_at).getTime() : 0;
+        return bt - at;
+      }
+      return a.position - b.position || a.id - b.id;
+    });
   const done = list.filter(t => t.done).length;
   const rest = restDays.has(selISO);
   const title = selISO === todayISO() ? '今日待办' : `${viewMonth + 1}月${parseISO(selISO).getDate()}日 待办`;
@@ -700,10 +708,11 @@ function renderDayPanel() {
 async function wishBirthday(names, day) {
   const text = `已祝${names}生日快乐`;
   const tempId = Date.now();
-  monthDailyTodos.push({ id: tempId, user_id: currentAccount.id, kind: 'daily', day, text, done: true, position: 0, created_at: new Date().toISOString() });
+  const now = new Date().toISOString();
+  monthDailyTodos.push({ id: tempId, user_id: currentAccount.id, kind: 'daily', day, text, done: true, position: 0, created_at: now, completed_at: now });
   renderCalendar();
   renderDayPanel();
-  const { data, error } = await supabase.from('todos').insert({ user_id: currentAccount.id, kind: 'daily', day, text, done: true, position: 0 }).select().single();
+  const { data, error } = await supabase.from('todos').insert({ user_id: currentAccount.id, kind: 'daily', day, text, done: true, position: 0, completed_at: now }).select().single();
   if (error) {
     monthDailyTodos = monthDailyTodos.filter(t => t.id !== tempId);
     toastError(error);
@@ -787,8 +796,10 @@ async function todayListClick(e) {
   if (t.classList.contains('cb') || t.classList.contains('txt')) {
     const todo = monthDailyTodos.find(x => x.id === id);
     if (todo) {
-      todo.done = !todo.done;
-      supabase.from('todos').update({ done: todo.done }).eq('id', id).then(({ error }) => {
+      const newDone = !todo.done;
+      todo.done = newDone;
+      todo.completed_at = newDone ? new Date().toISOString() : null;
+      supabase.from('todos').update({ done: newDone, completed_at: todo.completed_at }).eq('id', id).then(({ error }) => {
         if (error) { toastError(error); loadMonthDailyTodos().then(() => { renderCalendar(); renderDayPanel(); }); }
       });
     }
@@ -948,13 +959,14 @@ async function longListClick(e) {
     if (todo) {
       longTodos = longTodos.filter(x => x.id !== id);
       const tempId = Date.now();
-      const doneTodo = { id: tempId, user_id: currentAccount.id, kind: 'daily', day: todayISO(), text: todo.text, done: true, position: 0, created_at: new Date().toISOString() };
+      const now = new Date().toISOString();
+      const doneTodo = { id: tempId, user_id: currentAccount.id, kind: 'daily', day: todayISO(), text: todo.text, done: true, position: 0, created_at: now, completed_at: now };
       monthDailyTodos.push(doneTodo);
       renderLong();
       renderCalendar();
       if (selISO === todayISO()) renderDayPanel();
       const { data: inserted, error: insErr } = await supabase.from('todos').insert({
-        user_id: currentAccount.id, kind: 'daily', day: todayISO(), text: todo.text, done: true, position: 0
+        user_id: currentAccount.id, kind: 'daily', day: todayISO(), text: todo.text, done: true, position: 0, completed_at: now
       }).select().single();
       if (insErr) {
         monthDailyTodos = monthDailyTodos.filter(t => t.id !== tempId);
