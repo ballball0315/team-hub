@@ -120,6 +120,25 @@
 
     <section id="t2" class="panel">
       <div class="card">
+        <h3>老板食神 APP 日活</h3>
+        <form id="dau-form" class="add-form" style="flex-wrap:wrap">
+          <label>开始 <input name="start" type="date" required></label>
+          <label>结束 <input name="end" type="date" required></label>
+          <button type="button" data-days="7">最近 7 天</button>
+          <button type="button" data-days="30">最近 30 天</button>
+          <select name="platform" aria-label="平台">
+            <option value="total">总计（三端相加）</option>
+            <option value="ios">iOS</option>
+            <option value="android">Android</option>
+            <option value="harmony">HarmonyOS</option>
+          </select>
+          <button type="submit">查询</button>
+        </form>
+        <p id="dau-status" role="status">选择日期后点击查询。</p>
+        <svg id="dau-chart" role="img" aria-label="每日活跃用户趋势" viewBox="0 0 720 260" style="width:100%" hidden></svg>
+        <details id="dau-details" hidden><summary>每日数据</summary><table id="dau-table"></table></details>
+      </div>
+      <div class="card">
         <h3>我负责的数据模块 <span class="hint">新建后可导入数据 · 切换表格/折线/柱状</span></h3>
         <div class="add-form">
           <input id="m-name" placeholder="模块名 如 APP日活">
