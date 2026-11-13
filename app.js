@@ -14,118 +14,242 @@ const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   }
 });
 
-const dauForm = document.getElementById('dau-form');
+const dauControls = document.getElementById('dau-controls');
 const dauStatus = document.getElementById('dau-status');
 const dauChart = document.getElementById('dau-chart');
+const dauPlot = document.getElementById('dau-plot');
+const dauTooltip = document.getElementById('dau-tooltip');
+const dauSummary = document.getElementById('dau-summary');
 const dauDetails = document.getElementById('dau-details');
 const dauTable = document.getElementById('dau-table');
 const dateInChina = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Shanghai' });
+const dauPlatforms = [
+  { key: 'total', label: '总计', color: '#2563eb' },
+  { key: 'ios', label: 'iOS', color: '#7c3aed' },
+  { key: 'android', label: 'Android', color: '#087f5b' },
+  { key: 'harmony', label: 'HarmonyOS', color: '#b45309' },
+];
 let dauRows = [];
+let dauSelected = ['total'];
 const dauDate = days => new Date(Date.parse(dateInChina.format(new Date())) - days * 86400000).toISOString().slice(0, 10);
-function setDauRange(days) {
-  dauForm.elements.start.value = dauDate(days);
-  dauForm.elements.end.value = dauDate(1);
-  dauForm.elements.start.max = dauForm.elements.end.max = dauDate(1);
-}
-setDauRange(7);
-dauForm.querySelectorAll('[data-days]').forEach(button => {
-  button.onclick = () => setDauRange(Number(button.dataset.days));
-});
+const dauRange = days => [dauDate(days), dauDate(1)];
+const dauFormat = value => Number.isInteger(value) ? value.toLocaleString('zh-CN') : '缺数';
 
 function renderDau() {
-  const platform = dauForm.elements.platform.value;
-  const values = dauRows.map(row => row[platform]);
-  const known = values.filter(Number.isInteger);
-  dauChart.toggleAttribute('hidden', !known.length);
-  dauDetails.hidden = !values.length;
+  const platforms = dauPlatforms.filter(item => dauSelected.includes(item.key));
+  const count = dauRows.length;
+  const known = dauRows.flatMap(row => platforms.map(({ key }) => row[key])).filter(Number.isInteger);
+  dauPlot.hidden = !known.length;
+  dauTooltip.hidden = true;
+  dauSummary.hidden = !count;
+  dauDetails.hidden = !count;
   dauTable.replaceChildren();
-  if (!values.length) return;
-  const heading = dauTable.createTHead().insertRow();
-  for (const label of ['日期', '日活']) {
+  if (!count) return;
+
+  const last = dauRows.at(-1);
+  const previous = dauRows.at(-2);
+  dauSummary.textContent = last.date + ' · ' + platforms.map(({ key, label }) => {
+    const value = last[key];
+    const delta = Number.isInteger(value) && Number.isInteger(previous?.[key]) ? value - previous[key] : null;
+    return label + ' ' + dauFormat(value) +
+      (delta === null ? '' : '（较前一日 ' + (delta > 0 ? '+' : '') + dauFormat(delta) + '）');
+  }).join('　');
+
+  const header = dauTable.createTHead().insertRow();
+  for (const label of ['日期', ...platforms.map(item => item.label)]) {
     const cell = document.createElement('th');
+    cell.scope = 'col';
     cell.textContent = label;
-    heading.append(cell);
+    header.append(cell);
   }
-  const body = dauTable.createTBody();
-  dauRows.forEach(({ date }, i) => {
-    const row = body.insertRow();
-    row.insertCell().textContent = date;
-    row.insertCell().textContent = values[i]?.toLocaleString('zh-CN') ?? '缺数';
-  });
+  const tableBody = dauTable.createTBody();
+  for (const row of dauRows) {
+    const tr = tableBody.insertRow();
+    tr.insertCell().textContent = row.date;
+    for (const { key } of platforms) tr.insertCell().textContent = dauFormat(row[key]);
+  }
   if (!known.length) return;
-  const step = Math.max(1, Math.ceil(Math.max(...known) / 4));
-  const x = i => values.length === 1 ? 382 : 66 + i * 628 / (values.length - 1);
-  const y = value => 222 - value * 194 / (4 * step);
-  let path = '';
-  values.forEach((value, i) => {
-    if (value === null) return;
-    path += (i && values[i - 1] !== null ? 'L' : 'M') + x(i) + ' ' + y(value) + ' ';
-  });
-  dauChart.innerHTML = Array.from({length: 5}, (_, i) =>
-    '<line x1="66" x2="694" y1="' + y(i * step) + '" y2="' + y(i * step) + '" stroke="#d9e0e8"/>' +
-    '<text x="58" y="' + (y(i * step) + 4) + '" text-anchor="end" font-size="12">' + (i * step).toLocaleString('zh-CN') + '</text>'
-  ).join('') + '<path d="' + path + '" fill="none" stroke="#0071e3" stroke-width="2"/>';
-  values.forEach((value, i) => {
-    if (value === null) return;
-    const point = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-    point.setAttribute('cx', x(i));
-    point.setAttribute('cy', y(value));
-    point.setAttribute('r', '3');
-    point.setAttribute('fill', '#0071e3');
-    const tooltip = document.createElementNS(point.namespaceURI, 'title');
-    tooltip.textContent = dauRows[i].date + ' · ' + value.toLocaleString('zh-CN');
-    point.append(tooltip);
-    dauChart.append(point);
-  });
-  const dates = new Set([0, Math.floor((values.length - 1) / 2), values.length - 1]);
-  dates.forEach(i => {
+
+  const rough = Math.max(1, Math.max(...known) / 4);
+  const magnitude = 10 ** Math.floor(Math.log10(rough));
+  const step = [1, 2, 2.5, 5, 10].find(n => n * magnitude >= rough) * magnitude;
+  const x = i => count === 1 ? 382 : 66 + i * 628 / (count - 1);
+  const y = value => 202 - value * 176 / (4 * step);
+  dauChart.innerHTML = Array.from({ length: 5 }, (_, i) =>
+    '<line x1="66" x2="694" y1="' + y(i * step) + '" y2="' + y(i * step) + '" stroke="#e5e9f0"/>' +
+    '<text x="58" y="' + (y(i * step) + 4) + '" text-anchor="end">' + (i * step).toLocaleString('zh-CN') + '</text>'
+  ).join('');
+  for (const { key, color } of platforms) {
+    let path = '';
+    dauRows.forEach((row, i) => {
+      if (!Number.isInteger(row[key])) return;
+      const command = Number.isInteger(dauRows[i - 1]?.[key]) ? 'L' : 'M';
+      path += command + x(i) + ' ' + y(row[key]) + ' ';
+    });
+    dauChart.insertAdjacentHTML('beforeend', '<path d="' + path + '" fill="none" stroke="' + color + '" stroke-width="2.5"/>');
+    dauRows.forEach((row, i) => {
+      if (Number.isInteger(row[key])) {
+        dauChart.insertAdjacentHTML('beforeend', '<circle cx="' + x(i) + '" cy="' + y(row[key]) +
+          '" r="' + (count <= 30 ? 3 : 1.5) + '" fill="' + color + '"/>');
+      }
+    });
+  }
+  const ticks = Math.min(count, 7);
+  for (let tick = 0; tick < ticks; tick++) {
+    const i = ticks === 1 ? 0 : Math.round(tick * (count - 1) / (ticks - 1));
     const label = document.createElementNS(dauChart.namespaceURI, 'text');
     label.setAttribute('x', x(i));
-    label.setAttribute('y', '248');
+    label.setAttribute('y', '225');
     label.setAttribute('text-anchor', 'middle');
-    label.setAttribute('font-size', '12');
     label.textContent = dauRows[i].date.slice(5);
     dauChart.append(label);
-  });
+  }
+
+  const marker = document.createElementNS(dauChart.namespaceURI, 'line');
+  marker.setAttribute('y1', '26');
+  marker.setAttribute('y2', '202');
+  marker.setAttribute('stroke', '#94a3b8');
+  marker.setAttribute('stroke-dasharray', '4 4');
+  marker.style.visibility = 'hidden';
+  dauChart.append(marker);
+  function inspect(event) {
+    const bounds = dauChart.getBoundingClientRect();
+    const position = (event.clientX - bounds.left) * 720 / bounds.width;
+    const i = Math.max(0, Math.min(count - 1, Math.round((position - 66) * (count - 1) / 628)));
+    const row = dauRows[i];
+    marker.setAttribute('x1', x(i));
+    marker.setAttribute('x2', x(i));
+    marker.style.visibility = 'visible';
+    dauTooltip.textContent = [row.date, ...platforms.map(({ key, label }) => label + '　' + dauFormat(row[key]))].join('\n');
+    dauTooltip.hidden = false;
+    dauTooltip.style.left = Math.max(0, Math.min(x(i) * bounds.width / 720 + 10, bounds.width - dauTooltip.offsetWidth)) + 'px';
+  }
+  dauChart.onpointermove = event => { if (event.pointerType !== 'touch') inspect(event); };
+  dauChart.onpointerdown = inspect;
+  dauChart.onpointerleave = event => {
+    if (event.pointerType === 'touch') return;
+    marker.style.visibility = 'hidden';
+    dauTooltip.hidden = true;
+  };
 }
 
-dauForm.elements.platform.onchange = renderDau;
-dauForm.onsubmit = async event => {
-  event.preventDefault();
-  const { start, end } = dauForm.elements;
-  const days = (Date.parse(end.value) - Date.parse(start.value)) / 86400000 + 1;
-  if (days < 1 || days > 90) {
-    dauStatus.textContent = '请选择 1 至 90 天的日期范围。';
+async function queryDau([start, end] = []) {
+  const days = (Date.parse(end) - Date.parse(start)) / 86400000 + 1;
+  if (!(days >= 1 && days <= 90 && end <= dauDate(1))) {
+    dauStatus.textContent = '请选择截至昨天、最多 90 天的日期范围。';
     return;
   }
   const token = sessionToken;
-  const button = dauForm.querySelector('[type=submit]');
-  button.disabled = true;
-  dauRows = [];
-  renderDau();
   dauStatus.textContent = '查询中…';
   try {
     const response = await fetch(SUPABASE_URL + '/functions/v1/app-dau', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-session-token': token || '' },
-      body: JSON.stringify({ start: start.value, end: end.value })
+      body: JSON.stringify({ start, end })
     });
     const data = await response.json();
     if (token !== sessionToken) return;
-    if (!response.ok || !Array.isArray(data.rows)) {
+    if (!response.ok || !Array.isArray(data.rows) || !data.rows.length) {
       throw new Error(data.error || '日活服务暂不可用，请稍后重试。');
     }
     dauRows = data.rows;
     renderDau();
-    dauStatus.textContent = data.rows[0].date + ' 至 ' + data.rows.at(-1).date +
-      (data.refreshed ? ' · 已补拉友盟数据' : ' · 已读取缓存') +
+    dauStatus.textContent = start + ' 至 ' + end +
+      (data.refreshed ? ' · 已更新' : ' · 已读取缓存') +
       (data.rows.some(row => row.total === null) ? ' · 部分日期缺数' : '');
   } catch (error) {
-    if (token === sessionToken) dauStatus.textContent = '查询失败。' + error.message;
-  } finally {
-    button.disabled = false;
+    if (token === sessionToken) dauStatus.textContent = '查询失败。' + error.message +
+      (dauRows.length ? ' · 图表保留上次结果' : '');
   }
-};
+}
+
+function mountDauControls() {
+  const { createApp, h, ref } = window.Vue;
+  const { ElDatePicker, ElButton, ElCheckboxGroup, ElCheckboxButton } = window.ElementPlus;
+  const range = ref(dauRange(7));
+  const loading = ref(false);
+  const selected = ref(dauSelected);
+  const shortcuts = [7, 30].map(days => ({
+    text: '最近 ' + days + ' 天',
+    value: () => dauRange(days).map(date => new Date(date + 'T00:00:00')),
+  }));
+  createApp({
+    setup() {
+      return () => [
+        h('form', { class: 'dau-query', onSubmit: async event => {
+          event.preventDefault();
+          if (loading.value) return;
+          loading.value = true;
+          try { await queryDau(range.value || []); }
+          finally { loading.value = false; }
+        } }, [
+          h(ElDatePicker, {
+            modelValue: range.value,
+            'onUpdate:modelValue': value => { range.value = value; },
+            type: 'daterange',
+            valueFormat: 'YYYY-MM-DD',
+            startPlaceholder: '开始日期',
+            endPlaceholder: '结束日期',
+            rangeSeparator: '至',
+            clearable: false,
+            disabledDate: date => new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 10) > dauDate(1),
+            shortcuts,
+            popperClass: 'dau-date-popup',
+            ariaLabel: '日活查询日期范围',
+          }),
+          h(ElButton, { type: 'primary', nativeType: 'submit', loading: loading.value }, () => '查询'),
+        ]),
+        h(ElCheckboxGroup, {
+          class: 'dau-platforms',
+          ariaLabel: '平台',
+          modelValue: selected.value,
+          min: 1,
+          'onUpdate:modelValue': value => {
+            selected.value = value;
+            dauSelected = value;
+            renderDau();
+          },
+        }, () => dauPlatforms.map(({ key, label, color }) =>
+          h(ElCheckboxButton, { key, value: key, title: key === 'total' ? '三端日活相加' : label }, () => [
+            h('span', { class: 'dau-dot', style: { background: color } }), label,
+          ])
+        )),
+      ];
+    }
+  }).mount(dauControls);
+  dauStatus.textContent = '选择日期后点击查询。';
+}
+
+function loadDauScript(src) {
+  return new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = src;
+    script.onload = resolve;
+    script.onerror = reject;
+    document.head.append(script);
+  });
+}
+
+document.querySelector('[data-tab="t2"]').addEventListener('click', async () => {
+  if (dauControls.dataset.loading) return;
+  dauControls.dataset.loading = 'true';
+  try {
+    const elementBase = 'vendor/element-plus-2.11.8';
+    if (!document.getElementById('dau-element-css')) {
+      const css = document.createElement('link');
+      css.id = 'dau-element-css';
+      css.rel = 'stylesheet';
+      css.href = elementBase + '.css';
+      document.head.append(css);
+    }
+    if (!window.Vue) await loadDauScript('vendor/vue-3.5.24.js');
+    if (!window.ElementPlus) await loadDauScript(elementBase + '.js');
+    mountDauControls();
+  } catch {
+    delete dauControls.dataset.loading;
+    dauStatus.textContent = '日期选择器加载失败，请重新打开「我的产品数据」重试。';
+  }
+});
 
 const LINES = [
   { id: 'app', name: '老板食神 APP', subs: [
